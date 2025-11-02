@@ -1,65 +1,236 @@
-import Image from "next/image";
+"use client";
+
+import {useState, useCallback, useEffect, useRef, startTransition} from "react";
+import Script from "next/script";
+import Link from "next/link";
+import {Copy, RefreshCw, Check, Github} from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Button} from "@/components/ui/button";
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import {Slider} from "@/components/ui/slider";
+import {Switch} from "@/components/ui/switch";
+import {Label} from "@/components/ui/label";
+import {generateRandomPassword, generateMemorablePassword, type PasswordOptions} from "@/lib/password-generator";
+
+type PasswordType = "random" | "memorable";
 
 export default function Home() {
+  const [passwordType, setPasswordType] = useState<PasswordType>("random");
+  const [length, setLength] = useState([16]);
+  const [includeNumbers, setIncludeNumbers] = useState(true);
+  const [includeSymbols, setIncludeSymbols] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const generatePassword = useCallback(() => {
+    const options: PasswordOptions = {
+      length: length[0],
+      includeNumbers,
+      includeSymbols,
+    };
+    return passwordType === "random" ? generateRandomPassword(options) : generateMemorablePassword(options);
+  }, [passwordType, length, includeNumbers, includeSymbols]);
+
+  const [password, setPassword] = useState("");
+  const hasInitialized = useRef(false);
+
+  // Generate password only on client side to avoid hydration mismatch
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      const options: PasswordOptions = {
+        length: 16,
+        includeNumbers: true,
+        includeSymbols: true,
+      };
+      // Use startTransition to defer the state update and avoid hydration mismatch
+      // This is necessary because we need client-side only password generation
+      startTransition(() => {
+        setPassword(generateRandomPassword(options));
+      });
+    }
+    // This effect is necessary to avoid hydration mismatch
+    // The empty dependency array is intentional - we only want to run this once on mount
+  }, []); // Only run on mount to generate initial password
+
+  const handleRefresh = () => {
+    setPassword(generatePassword());
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleTabChange = (value: string) => {
+    const newType = value as PasswordType;
+    setPasswordType(newType);
+    const options: PasswordOptions = {
+      length: length[0],
+      includeNumbers,
+      includeSymbols,
+    };
+    setPassword(newType === "random" ? generateRandomPassword(options) : generateMemorablePassword(options));
+  };
+
+  const handleLengthChange = (value: number[]) => {
+    setLength(value);
+    const options: PasswordOptions = {
+      length: value[0],
+      includeNumbers,
+      includeSymbols,
+    };
+    setPassword(passwordType === "random" ? generateRandomPassword(options) : generateMemorablePassword(options));
+  };
+
+  const handleNumberToggle = (checked: boolean) => {
+    setIncludeNumbers(checked);
+    const options: PasswordOptions = {
+      length: length[0],
+      includeNumbers: checked,
+      includeSymbols,
+    };
+    setPassword(passwordType === "random" ? generateRandomPassword(options) : generateMemorablePassword(options));
+  };
+
+  const handleSymbolToggle = (checked: boolean) => {
+    setIncludeSymbols(checked);
+    const options: PasswordOptions = {
+      length: length[0],
+      includeNumbers,
+      includeSymbols: checked,
+    };
+    setPassword(passwordType === "random" ? generateRandomPassword(options) : generateMemorablePassword(options));
+  };
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "Password Generator",
+    description: "Generate secure, random, and memorable passwords for your accounts. Free, open-source password generator with customizable options.",
+    url: "https://passgen.noahatkins.com",
+    applicationCategory: "SecurityApplication",
+    operatingSystem: "Any",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    author: {
+      "@type": "Person",
+      name: "Noah Atkins",
+    },
+    featureList: ["Random password generation", "Memorable password generation", "Customizable password length (8-64 characters)", "Optional numbers and symbols", "Copy to clipboard", "Open source"],
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <Script id="structured-data" type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(structuredData)}} />
+      <main className="min-h-screen flex items-center justify-center p-4 bg-background relative">
+        {/* Header with theme toggle and GitHub link */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <Link href="https://github.com/noahatkins/password-generator" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+            <Button variant="ghost" size="icon" className="w-9 h-9">
+              <Github className="h-4 w-4" />
+            </Button>
+          </Link>
+          <ThemeToggle />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="w-full max-w-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight">Password Generator</h1>
+            <p className="text-muted-foreground">Create secure passwords for your accounts</p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Generated Password</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Password Display */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 p-4 bg-muted rounded-md border font-mono text-lg break-all">{password}</div>
+                <Button variant="outline" size="icon" onClick={handleCopy} aria-label="Copy password">
+                  {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" size="icon" onClick={handleRefresh} aria-label="Generate new password">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Tabs */}
+              <Tabs value={passwordType} onValueChange={handleTabChange}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="random">Random</TabsTrigger>
+                  <TabsTrigger value="memorable">Memorable</TabsTrigger>
+                </TabsList>
+                <TabsContent value="random" className="space-y-6 mt-6">
+                  <div className="space-y-4">
+                    {/* Length Slider */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="length">Password Length</Label>
+                        <span className="text-sm text-muted-foreground">{length[0]} characters</span>
+                      </div>
+                      <Slider id="length" min={8} max={64} step={1} value={length} onValueChange={handleLengthChange} />
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="numbers" className="cursor-pointer">
+                          Include Numbers
+                        </Label>
+                        <Switch id="numbers" checked={includeNumbers} onCheckedChange={handleNumberToggle} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="symbols" className="cursor-pointer">
+                          Include Symbols
+                        </Label>
+                        <Switch id="symbols" checked={includeSymbols} onCheckedChange={handleSymbolToggle} />
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="memorable" className="space-y-6 mt-6">
+                  <div className="space-y-4">
+                    {/* Length Slider */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="length-memorable">Password Length</Label>
+                        <span className="text-sm text-muted-foreground">{length[0]} characters</span>
+                      </div>
+                      <Slider id="length-memorable" min={8} max={64} step={1} value={length} onValueChange={handleLengthChange} />
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="numbers-memorable" className="cursor-pointer">
+                          Include Numbers
+                        </Label>
+                        <Switch id="numbers-memorable" checked={includeNumbers} onCheckedChange={handleNumberToggle} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="symbols-memorable" className="cursor-pointer">
+                          Include Symbols
+                        </Label>
+                        <Switch id="symbols-memorable" checked={includeSymbols} onCheckedChange={handleSymbolToggle} />
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </div>
       </main>
-    </div>
+    </>
   );
 }
