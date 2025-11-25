@@ -16,8 +16,8 @@ import {generateRandomPassword, generateMemorablePassword, type PasswordOptions}
 type PasswordType = "random" | "memorable";
 
 export default function Home() {
-  const [passwordType, setPasswordType] = useState<PasswordType>("random");
-  const [length, setLength] = useState([16]);
+  const [passwordType, setPasswordType] = useState<PasswordType>("memorable");
+  const [length, setLength] = useState([24]);
   const [includeNumbers, setIncludeNumbers] = useState(true);
   const [includeSymbols, setIncludeSymbols] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -39,14 +39,14 @@ export default function Home() {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       const options: PasswordOptions = {
-        length: 16,
+        length: 24,
         includeNumbers: true,
         includeSymbols: true,
       };
       // Use startTransition to defer the state update and avoid hydration mismatch
       // This is necessary because we need client-side only password generation
       startTransition(() => {
-        setPassword(generateRandomPassword(options));
+        setPassword(generateMemorablePassword(options));
       });
     }
     // This effect is necessary to avoid hydration mismatch
